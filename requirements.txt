@@ -5,3 +5,4 @@ passlib==1.7.4
 argon2-cffi==23.1.0
 sqlmodel
 python-dotenv
+psycopg2
