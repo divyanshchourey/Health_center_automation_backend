@@ -8,5 +8,6 @@ python-dotenv
 psycopg2
 passlib
 pydantic[email]
-passlib[bycrypt] pyjwt
+passlib[bycrypt] 
+pyjwt
 python-jose[cryptography]
