@@ -7,6 +7,6 @@ sqlmodel
 python-dotenv
 psycopg2
 passlib
-pydantic
+pydantic[email]
 passlib[bycrypt] pyjwt
 python-jose[cryptography]
