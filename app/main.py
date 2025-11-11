@@ -18,6 +18,7 @@ app.add_middleware(
         # Added dev port 3001 to support alternative dev server
         "http://localhost:3001",
         "http://127.0.0.1:3001",
+        "https://health-automation-landing.web.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
