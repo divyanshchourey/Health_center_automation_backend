@@ -6,6 +6,13 @@ from app.crud import employee as crud_employee
 
 router = APIRouter(prefix="/employee", tags=["Employee"])
 
+
+@router.get("/", response_model=list[schemas.EmployeeListResponse])
+def list_employees(db: Session = Depends(get_db)):
+    """List all staff members with basic details"""
+    return crud_employee.get_all_employees(db)
+
+
 @router.get("/{user_id}", response_model=schemas.EmployeeResponse)
 def get_employee_profile(user_id: int, db: Session = Depends(get_db)):
     profile = crud_employee.get_employee_profile(db, user_id)

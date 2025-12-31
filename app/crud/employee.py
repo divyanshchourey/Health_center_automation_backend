@@ -2,6 +2,20 @@ from datetime import date
 from sqlalchemy.orm import Session
 from app import models, schemas
 
+
+def get_all_employees(db: Session):
+    """Fetch all employees with basic user details"""
+    return db.query(
+        models.User.UserID,
+        models.User.FirstName,
+        models.User.LastName,
+        models.User.Phone,
+        models.Employee.Division,
+        models.Employee.Designation,
+        models.Employee.Status
+    ).join(models.Employee, models.User.UserID == models.Employee.EmployeeID).all()
+
+
 def get_employee_profile(db: Session, user_id: int):
     """Fetch employee profile"""
     return db.query(models.Employee).filter(models.Employee.EmployeeID == user_id).first()

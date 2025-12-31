@@ -131,6 +131,31 @@ class EmployeeResponse(EmployeeBase):
         from_attributes = True
 
 
+class EmployeeListResponse(BaseModel):
+    UserID: int
+    FirstName: str
+    LastName: Optional[str]
+    Phone: str
+    Division: Optional[str]
+    Designation: Optional[str]
+    Status: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
+class PatientListResponse(BaseModel):
+    UserID: int
+    FirstName: str
+    LastName: Optional[str]
+    Phone: str
+    BloodGroup: Optional[str]
+    RiskCategory: Optional[str]
+
+    class Config:
+        from_attributes = True
+
+
 
 
 # =========================
