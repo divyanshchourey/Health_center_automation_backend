@@ -36,3 +36,15 @@ def delete_doctor_profile(db: Session, user_id: int):
         db.commit()
         return True
     return False
+
+
+def get_all_doctors(db: Session):
+    """Fetch all doctors with basic user details"""
+    return db.query(
+        models.User.UserID,
+        models.User.FirstName,
+        models.User.LastName,
+        models.User.Phone,
+        models.DoctorProfile.Specialization,
+        models.DoctorProfile.ExperienceYears
+    ).join(models.DoctorProfile, models.User.UserID == models.DoctorProfile.DoctorID).all()

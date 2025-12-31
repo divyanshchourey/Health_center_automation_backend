@@ -93,6 +93,18 @@ class DoctorProfileResponse(DoctorProfileBase):
         from_attributes = True
 
 
+class DoctorListResponse(BaseModel):
+    UserID: int
+    FirstName: str
+    LastName: Optional[str]
+    Phone: str
+    Specialization: Optional[str]
+    ExperienceYears: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
 # ✅ Renamed Employee → StaffProfile for consistency
 # =========================
 # ✅ Employee (Replaces StaffProfile)

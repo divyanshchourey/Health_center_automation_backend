@@ -6,6 +6,12 @@ from app.crud import doctor as crud_doctor
 
 router = APIRouter(prefix="/doctor", tags=["Doctor Dashboard"])
 
+@router.get("/", response_model=list[schemas.DoctorListResponse])
+def list_doctors(db: Session = Depends(get_db)):
+    """List all doctors with basic details"""
+    return crud_doctor.get_all_doctors(db)
+
+
 @router.get("/{user_id}", response_model=schemas.DoctorProfileResponse)
 def get_profile(user_id: int, db: Session = Depends(get_db)):
     profile = crud_doctor.get_doctor_profile(db, user_id)
