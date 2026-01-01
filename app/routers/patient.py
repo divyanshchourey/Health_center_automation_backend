@@ -21,6 +21,15 @@ def get_patient_profile(user_id: int, db: Session = Depends(get_db)):
     return profile
 
 
+@router.post("/appointment", response_model=schemas.AppointmentResponse)
+def create_appointment(data: schemas.AppointmentCreate, db: Session = Depends(get_db)):
+    try:
+        appointment = crud_patient.create_appointment(db, data)
+        return appointment
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @router.post("/{user_id}", response_model=schemas.PatientProfileResponse)
 def create_or_update_patient_profile(user_id: int, data: schemas.PatientProfileCreate, db: Session = Depends(get_db)):
     profile = crud_patient.create_or_update_patient_profile(db, user_id, data)
@@ -33,11 +42,3 @@ def delete_patient_profile(user_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient profile not found")
     return {"message": "Patient profile deleted successfully"}
-
-@router.post("/appointment", response_model=schemas.AppointmentResponse)
-def create_appointment(data: schemas.AppointmentCreate, db: Session = Depends(get_db)):
-    try:
-        appointment = crud_patient.create_appointment(db, data)
-        return appointment
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
