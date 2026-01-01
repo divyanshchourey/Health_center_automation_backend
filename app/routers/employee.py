@@ -44,3 +44,12 @@ def delete_employee_profile(user_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Employee profile not found")
     return {"message": "Employee profile deleted successfully"}
+
+
+@router.delete("/appointments/{appointment_id}")
+def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
+    """Delete an appointment (Staff only)"""
+    success = crud_employee.delete_appointment(db, appointment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    return {"message": "Appointment deleted successfully"}

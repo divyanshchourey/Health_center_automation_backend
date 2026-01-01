@@ -113,3 +113,13 @@ def get_all_appointments_by_date(db: Session, query_date: date):
         ))
     
     return results
+
+
+def delete_appointment(db: Session, appointment_id: int):
+    """Delete an appointment by ID"""
+    appointment = db.query(models.Appointment).filter(models.Appointment.AppointmentID == appointment_id).first()
+    if appointment:
+        db.delete(appointment)
+        db.commit()
+        return True
+    return False
