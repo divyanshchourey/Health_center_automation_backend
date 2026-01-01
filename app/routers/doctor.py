@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import date
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
@@ -32,3 +33,9 @@ def delete_profile(user_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
     return {"message": "Doctor profile deleted"}
+
+
+@router.get("/{user_id}/appointments", response_model=list[schemas.AppointmentEmployeeResponse])
+def get_appointments(user_id: int, date: date, db: Session = Depends(get_db)):
+    """Get appointments for a specific doctor on a specific date"""
+    return crud_doctor.get_doctor_appointments(db, user_id, date)

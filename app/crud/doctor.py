@@ -1,3 +1,5 @@
+from datetime import date
+from sqlalchemy import cast, Date
 from sqlalchemy.orm import Session
 from app import models, schemas
 
@@ -48,3 +50,34 @@ def get_all_doctors(db: Session):
         models.DoctorProfile.Specialization,
         models.DoctorProfile.ExperienceYears
     ).join(models.DoctorProfile, models.User.UserID == models.DoctorProfile.DoctorID).all()
+
+
+def get_doctor_appointments(db: Session, doctor_id: int, query_date: date):
+    """Fetch appointments for a specific doctor on a specific date"""
+    appointments = db.query(models.Appointment).filter(
+        models.Appointment.DoctorID == doctor_id,
+        cast(models.Appointment.DateTime, Date) == query_date
+    ).all()
+
+    results = []
+    for appt in appointments:
+        patient_name = "Unknown"
+        if appt.patient and appt.patient.user:
+            patient_name = f"{appt.patient.user.FirstName} {appt.patient.user.LastName}".strip()
+
+        doctor_name = "Unknown"
+        if appt.doctor and appt.doctor.user:
+            doctor_name = f"{appt.doctor.user.FirstName} {appt.doctor.user.LastName}".strip()
+
+        results.append(schemas.AppointmentEmployeeResponse(
+            AppointmentID=appt.AppointmentID,
+            PatientID=appt.PatientID,
+            PatientName=patient_name,
+            DoctorID=appt.DoctorID,
+            DoctorName=doctor_name,
+            DateTime=appt.DateTime,
+            Type=appt.Type,
+            Status=appt.Status
+        ))
+    
+    return results
