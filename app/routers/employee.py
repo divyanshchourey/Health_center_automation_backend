@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
 from sqlalchemy.orm import Session
 from app import schemas
 from app.database import get_db
@@ -11,6 +12,17 @@ router = APIRouter(prefix="/employee", tags=["Employee"])
 def list_employees(db: Session = Depends(get_db)):
     """List all staff members with basic details"""
     return crud_employee.get_all_employees(db)
+
+
+@router.get("/appointments/today", response_model=list[schemas.AppointmentResponse])
+def todays_appointments(db: Session = Depends(get_db)):
+    return crud_employee.get_todays_appointments(db)
+
+
+@router.get("/appointments", response_model=list[schemas.AppointmentEmployeeResponse])
+def get_appointments_by_date(date: date, db: Session = Depends(get_db)):
+    """Get all appointments for a specific date (for staff)"""
+    return crud_employee.get_all_appointments_by_date(db, date)
 
 
 @router.get("/{user_id}", response_model=schemas.EmployeeResponse)
@@ -32,8 +44,3 @@ def delete_employee_profile(user_id: int, db: Session = Depends(get_db)):
     if not success:
         raise HTTPException(status_code=404, detail="Employee profile not found")
     return {"message": "Employee profile deleted successfully"}
-
-
-@router.get("/appointments/today", response_model=list[schemas.AppointmentResponse])
-def todays_appointments(db: Session = Depends(get_db)):
-    return crud_employee.get_todays_appointments(db)
