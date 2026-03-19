@@ -3,11 +3,9 @@ uvicorn==0.30.6
 sqlalchemy==2.0.34
 passlib==1.7.4
 argon2-cffi==23.1.0
-sqlmodel
 python-dotenv
 psycopg2
-passlib
 pydantic[email]
-passlib[bycrypt] 
-pyjwt
 python-jose[cryptography]
+python-multipart
+supabase

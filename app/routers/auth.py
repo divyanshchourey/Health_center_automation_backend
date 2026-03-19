@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app import schemas
 from app.database import get_db
 from app.crud import users as crud_users
+from app.core.security import create_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -45,8 +46,12 @@ def login_user(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Incorrect password"
         )
 
+    access_token = create_access_token({"sub": str(user.UserID), "role_id": user.RoleID})
+
     return {
         "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "user": {
             "UserID": user.UserID,
             "FirstName": user.FirstName,
@@ -84,8 +89,12 @@ def login_patient(credentials: schemas.UserLogin, db: Session = Depends(get_db))
             detail="Access denied. This endpoint is only for patients."
         )
 
+    access_token = create_access_token({"sub": str(user.UserID), "role_id": user.RoleID})
+
     return {
         "message": "Patient login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "user": {
             "UserID": user.UserID,
             "FirstName": user.FirstName,

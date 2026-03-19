@@ -1,5 +1,6 @@
+from uuid import UUID
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 from datetime import date, datetime
 
 # =========================
@@ -24,12 +25,14 @@ class UserBase(BaseModel):
     LastName: Optional[str]
     Email: EmailStr
     Phone: str
+    
 
 class UserCreate(UserBase):
     Password: str
     RoleID: Optional[int]
     Gender: Optional[str] = None
     DOB: Optional[date] = None
+    AadharNumber: str
     Address: Optional[str] = None
 
 class UserLogin(BaseModel):
@@ -41,6 +44,7 @@ class UserResponse(UserBase):
     RoleID: int
     CreatedAt: datetime
     UpdatedAt: datetime
+    AadharNumber: str
     Gender: Optional[str] = None
     DOB: Optional[date] = None
     Address: Optional[str] = None
@@ -73,13 +77,13 @@ class PatientProfileResponse(PatientProfileBase):
 
 
 class DoctorProfileBase(BaseModel):
+    DProfilePhoto: Optional[str]
     Qualification: Optional[str]
     Specialization: Optional[str]
     RegistrationNumber: Optional[str]
     ExperienceYears: Optional[int]
     ClinicAddress: Optional[str]
     AvailabilitySchedule: Optional[Any]
-    AadharNumber: Optional[str]
     PANNumber: Optional[str]
     AccountNumber: Optional[str]
     IFSCCode: Optional[str]
@@ -94,6 +98,7 @@ class DoctorProfileResponse(DoctorProfileBase):
 
 
 class DoctorListResponse(BaseModel):
+    DProfilePhoto: Optional[str]
     UserID: int
     FirstName: str
     LastName: Optional[str]
@@ -111,12 +116,12 @@ class DoctorListResponse(BaseModel):
 # =========================
 
 class EmployeeBase(BaseModel):
+    EProfilePhoto: Optional[str]
     Division: Optional[str]
     Ward: Optional[str]
     Designation: Optional[str]
     JoinDate: Optional[date]
     Status: Optional[str]
-    AadharNumber: Optional[str]
     PANNumber: Optional[str]
     AccountNumber: Optional[str]
     IFSCCode: Optional[str]
@@ -132,6 +137,7 @@ class EmployeeResponse(EmployeeBase):
 
 
 class EmployeeListResponse(BaseModel):
+    EProfilePhoto: Optional[str]
     UserID: int
     FirstName: str
     LastName: Optional[str]
@@ -194,7 +200,6 @@ class AppointmentEmployeeResponse(BaseModel):
 
 class ConsultationBase(BaseModel):
     AppointmentID: int
-    Notes: Optional[str]
     PrescriptionFile: Optional[str]
     FollowUpRequired: Optional[bool]
 
@@ -213,8 +218,8 @@ class ConsultationResponse(ConsultationBase):
 
 class LabCenterBase(BaseModel):
     Name: str
-    Address: Optional[str]
-    Contact: Optional[str]
+    Address: str
+    Contact: str
     AccreditationNumber: Optional[str]
     ApprovedByAdmin: Optional[bool] = False
 
@@ -242,12 +247,14 @@ class InvestigationResponse(InvestigationBase):
         from_attributes = True
 
 
+
 class InvestigationBookingBase(BaseModel):
-    AppointmentID: int
+    AppointmentID: Optional[int] = None
     InvestigationID: int
+    InvestigationDate: Optional[date] 
     LabID: int
-    Status: Optional[str]
-    ResultDate: Optional[date]
+    Status: Optional[str] = "PENDING"
+    ResultDate: Optional[date] = None
 
 class InvestigationBookingCreate(InvestigationBookingBase):
     pass
@@ -261,13 +268,15 @@ class InvestigationBookingResponse(InvestigationBookingBase):
 class ReportBase(BaseModel):
     BookingID: int
     FilePath: str
-    AbnormalFlag: Optional[bool]
+    FileType: str
 
 class ReportCreate(ReportBase):
     pass
 
 class ReportResponse(ReportBase):
     ReportID: int
+    FilePath: str
+    FileType: str
     class Config:
         from_attributes = True
 
@@ -275,22 +284,6 @@ class ReportResponse(ReportBase):
 # =========================
 # 5️⃣  Billing & Payments
 # =========================
-
-class DiscountBase(BaseModel):
-    Name: str
-    Rule: Optional[Any]
-    StartDate: Optional[date]
-    EndDate: Optional[date]
-    Percent: Optional[float]
-
-class DiscountCreate(DiscountBase):
-    pass
-
-class DiscountResponse(DiscountBase):
-    DiscountID: int
-    class Config:
-        from_attributes = True
-
 
 class PaymentBase(BaseModel):
     Method: str
@@ -306,41 +299,39 @@ class PaymentResponse(PaymentBase):
     class Config:
         from_attributes = True
 
-
-class BillingBase(BaseModel):
+class DoctorBillingBase(BaseModel):
     AppointmentID: int
-    PaymentID: int
-    DiscountID: Optional[int]
+    PaymentID: Optional[int]
     Amount: float
-    FinalAmount: float
 
-class BillingCreate(BillingBase):
+class DoctorBillingCreate(DoctorBillingBase):
     pass
 
-class BillingResponse(BillingBase):
-    BillID: int
+
+
+class DoctorBillingResponse(DoctorBillingBase):
+    DBillID: int
+    Date: datetime
+    class Config:
+        from_attributes = True
+
+class LabCenterBillingBase(BaseModel):
+    AppointmentID: int
+    PaymentID: int
+    Amount: float
+
+class LabCenterBillingCreate(LabCenterBillingBase):
+    pass
+
+class LabCenterBillingResponse(LabCenterBillingBase):
+    LabBillID: int
     Date: datetime
     class Config:
         from_attributes = True
 
 
-# =========================
-# 6️⃣  Attendance
-# =========================
 
-class AttendanceBase(BaseModel):
-    UserID: int
-    Date: date
-    InTime: Optional[datetime]
-    OutTime: Optional[datetime]
-    Latitude: Optional[float]
-    Longitude: Optional[float]
-    Remarks: Optional[str]
 
-class AttendanceCreate(AttendanceBase):
-    pass
 
-class AttendanceResponse(AttendanceBase):
-    AttendanceID: int
-    class Config:
-        from_attributes = True
+
+

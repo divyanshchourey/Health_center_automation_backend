@@ -1,7 +1,8 @@
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+from sqlalchemy.orm import Session  # pyright: ignore[reportMissingImports]
+from passlib.context import CryptContext  # pyright: ignore[reportMissingModuleSource]
 from app import models, schemas
 from datetime import datetime
+from app.core.supabase_client import supabase
 
 # Using Argon2 for hashing
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -23,6 +24,31 @@ def verify_password(plain_password: str, hashed_password: str):
         # Unknown hash format or missing backend; treat as invalid credentials
         return False
 
+def create_patient_folders(patient_id: int):
+    if supabase is None:
+        return {"status": "storage not configured"}
+
+    folders = [
+        f"{patient_id}/bill/doctor_bill/.keep",
+        f"{patient_id}/bill/lab_bill/.keep",
+        f"{patient_id}/prescription/.keep",
+        f"{patient_id}/report/.keep",
+    ]
+
+    for path in folders:
+        try:
+            supabase.storage.from_("pdf_patient").upload(
+                path,
+                b"",
+                {"content-type": "text/plain"}
+            )
+        except Exception:
+            continue
+
+    return {"status": "patient folders created"}
+
+
+
 # -------- CRUD Operations --------
 def get_user_by_email(db: Session, email: str):
     """Fetch a user by email."""
@@ -36,6 +62,7 @@ def create_user(db: Session, user: schemas.UserCreate):
         LastName=user.LastName,
         Email=user.Email,
         Phone=user.Phone,
+        AadharNumber=user.AadharNumber,
         Password=hashed_pw,
         RoleID=user.RoleID,
         Gender=user.Gender,
@@ -46,6 +73,12 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+   
+    PATIENT_ROLE_ID = 3
+    if db_user.RoleID == PATIENT_ROLE_ID:
+        create_patient_folders(db_user.UserID)
+        
+
     return db_user
 
 def delete_user(db: Session, user_id: int):

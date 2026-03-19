@@ -1,8 +1,9 @@
-from sqlalchemy import (
+from argparse import FileType
+from sqlalchemy import (  # pyright: ignore[reportMissingImports]
     Column, Integer, String, Text, Date, DateTime, Boolean, Float, DECIMAL,
     ForeignKey, JSON
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship  # pyright: ignore[reportMissingImports]
 from datetime import datetime
 from .database import Base
 
@@ -32,6 +33,7 @@ class User(Base):
     Gender = Column(String)
     DOB = Column(Date)
     Address = Column(Text)
+    AadharNumber = Column(String, nullable=False, unique=True)
     RoleID = Column(Integer, ForeignKey("Roles.RoleID"), nullable=False)
     CreatedAt = Column(DateTime, default=datetime.utcnow)
     UpdatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -70,16 +72,79 @@ class DoctorProfile(Base):
     Qualification = Column(String)
     Specialization = Column(String)
     RegistrationNumber = Column(String)
+    DProfilePhoto = Column(String)
     ExperienceYears = Column(Integer)
     ClinicAddress = Column(Text)
     AvailabilitySchedule = Column(JSON)
-    AadharNumber = Column(String(12), unique=True)
     PANNumber = Column(String(10), unique=True)
     AccountNumber = Column(String)
     IFSCCode = Column(String)
 
     user = relationship("User", back_populates="doctor")
     appointments = relationship("Appointment", back_populates="doctor")
+
+    @property
+    def ImageID(self):
+        return self.DoctorID
+
+    @property
+    def UserID(self):
+        return self.DoctorID
+
+    @property
+    def RoleType(self):
+        return "doctor"
+
+    @property
+    def StorageBucket(self):
+        return "profile_image"
+
+    @StorageBucket.setter
+    def StorageBucket(self, value):
+        # Kept for API compatibility; storage bucket is fixed.
+        return None
+
+    @property
+    def FilePath(self):
+        return self.DProfilePhoto
+
+    @FilePath.setter
+    def FilePath(self, value):
+        self.DProfilePhoto = value
+
+    @property
+    def FileName(self):
+        if not self.DProfilePhoto:
+            return None
+        return self.DProfilePhoto.rsplit("/", 1)[-1]
+
+    @FileName.setter
+    def FileName(self, value):
+        return None
+
+    @property
+    def ContentType(self):
+        return "image/jpeg"
+
+    @ContentType.setter
+    def ContentType(self, value):
+        return None
+
+    @property
+    def UploadedAt(self):
+        return datetime.utcnow()
+
+    @UploadedAt.setter
+    def UploadedAt(self, value):
+        return None
+
+    @property
+    def UpdatedAt(self):
+        return datetime.utcnow()
+
+    @UpdatedAt.setter
+    def UpdatedAt(self, value):
+        return None
 
 
 class Employee(Base):
@@ -89,14 +154,77 @@ class Employee(Base):
     Division = Column(String)
     Ward = Column(String)
     Designation = Column(String)
+    EProfilePhoto = Column(String)
     JoinDate = Column(Date)
     Status = Column(String)
-    AadharNumber = Column(String(12), unique=True)
     PANNumber = Column(String(10), unique=True)
     AccountNumber = Column(String)
     IFSCCode = Column(String)
 
     user = relationship("User", back_populates="employee")
+
+    @property
+    def ImageID(self):
+        return self.EmployeeID
+
+    @property
+    def UserID(self):
+        return self.EmployeeID
+
+    @property
+    def RoleType(self):
+        return "employee"
+
+    @property
+    def StorageBucket(self):
+        return "profile_image"
+
+    @StorageBucket.setter
+    def StorageBucket(self, value):
+        # Kept for API compatibility; storage bucket is fixed.
+        return None
+
+    @property
+    def FilePath(self):
+        return self.EProfilePhoto
+
+    @FilePath.setter
+    def FilePath(self, value):
+        self.EProfilePhoto = value
+
+    @property
+    def FileName(self):
+        if not self.EProfilePhoto:
+            return None
+        return self.EProfilePhoto.rsplit("/", 1)[-1]
+
+    @FileName.setter
+    def FileName(self, value):
+        return None
+
+    @property
+    def ContentType(self):
+        return "image/jpeg"
+
+    @ContentType.setter
+    def ContentType(self, value):
+        return None
+
+    @property
+    def UploadedAt(self):
+        return datetime.utcnow()
+
+    @UploadedAt.setter
+    def UploadedAt(self, value):
+        return None
+
+    @property
+    def UpdatedAt(self):
+        return datetime.utcnow()
+
+    @UpdatedAt.setter
+    def UpdatedAt(self, value):
+        return None
 
 # =========================
 # 3️⃣  Appointments & Consultations
@@ -108,20 +236,21 @@ class Appointment(Base):
     AppointmentID = Column(Integer, primary_key=True, index=True)
     PatientID = Column(Integer, ForeignKey("PatientProfiles.PatientID"))
     DoctorID = Column(Integer, ForeignKey("DoctorProfiles.DoctorID"))
+    LabID = Column(Integer, ForeignKey("LabCenters.LabID"), nullable=True)
     DateTime = Column(DateTime)
     Type = Column(String)
     Status = Column(String)
+    PaymentID = Column(Integer, ForeignKey("Payments.PaymentID"), nullable=True)
 
     patient = relationship("PatientProfile",back_populates="appointments")
     doctor = relationship("DoctorProfile", back_populates="appointments")
-
+   
 
 class Consultation(Base):
     __tablename__ = "Consultations"
 
     ConsultationID = Column(Integer, primary_key=True, index=True)
     AppointmentID = Column(Integer, ForeignKey("Appointments.AppointmentID"))
-    Notes = Column(Text)
     PrescriptionFile = Column(Text)
     FollowUpRequired = Column(Boolean)
 
@@ -151,6 +280,7 @@ class Investigation(Base):
     Description = Column(Text)
     DefaultRate = Column(DECIMAL)
 
+    
 
 class InvestigationBooking(Base):
     __tablename__ = "InvestigationBookings"
@@ -158,6 +288,7 @@ class InvestigationBooking(Base):
     BookingID = Column(Integer, primary_key=True, index=True)
     AppointmentID = Column(Integer, ForeignKey("Appointments.AppointmentID"))
     InvestigationID = Column(Integer, ForeignKey("Investigations.InvestigationID"))
+    InvestigationDate = Column(Date)
     LabID = Column(Integer, ForeignKey("LabCenters.LabID"))
     Status = Column(String)
     ResultDate = Column(Date)
@@ -165,7 +296,13 @@ class InvestigationBooking(Base):
     appointment = relationship("Appointment")
     investigation = relationship("Investigation")
     lab = relationship("LabCenter")
+   
 
+    @property
+    def InvestigationName(self):
+        if self.investigation:
+            return self.investigation.Name
+        return None
 
 class Report(Base):
     __tablename__ = "Reports"
@@ -173,24 +310,21 @@ class Report(Base):
     ReportID = Column(Integer, primary_key=True, index=True)
     BookingID = Column(Integer, ForeignKey("InvestigationBookings.BookingID"))
     FilePath = Column(Text)
-    AbnormalFlag = Column(Boolean)
-
+    FileType = Column(String)
     booking = relationship("InvestigationBooking")
+
+    @property
+    def DocumentID(self):
+        return self.ReportID
+
+    @property
+    def FileName(self):
+        return self.FilePath.rsplit("/", 1)[-1] if self.FilePath else None
+
 
 # =========================
 # 5️⃣  Billing & Payments
 # =========================
-
-class Discount(Base):
-    __tablename__ = "Discounts"
-
-    DiscountID = Column(Integer, primary_key=True, index=True)
-    Name = Column(String)
-    Rule = Column(JSON)
-    StartDate = Column(Date)
-    EndDate = Column(Date)
-    Percent = Column(Float)
-
 
 class Payment(Base):
     __tablename__ = "Payments"
@@ -202,35 +336,94 @@ class Payment(Base):
     Date = Column(DateTime, default=datetime.utcnow)
 
 
-class Billing(Base):
-    __tablename__ = "Billing"
+class DoctorBilling(Base):
+    __tablename__ = "DoctorBilling"
 
-    BillID = Column(Integer, primary_key=True, index=True)
+    DBillID = Column(Integer, primary_key=True, index=True)
     AppointmentID = Column(Integer, ForeignKey("Appointments.AppointmentID"))
     PaymentID = Column(Integer, ForeignKey("Payments.PaymentID"))
-    DiscountID = Column(Integer, ForeignKey("Discounts.DiscountID"))
-    Amount = Column(DECIMAL)
-    FinalAmount = Column(DECIMAL)
+    Amount = Column(DECIMAL, nullable=False)
     Date = Column(DateTime, default=datetime.utcnow)
 
     appointment = relationship("Appointment")
     payment = relationship("Payment")
-    discount = relationship("Discount")
 
-# =========================
-# 6️⃣  Attendance
-# =========================
+    @property
+    def BillID(self):
+        return self.DBillID
 
-class Attendance(Base):
-    __tablename__ = "Attendance"
+    @property
+    def BillAmount(self):
+        return self.Amount
 
-    AttendanceID = Column(Integer, primary_key=True, index=True)
-    UserID = Column(Integer, ForeignKey("Users.UserID"))
-    Date = Column(Date)
-    InTime = Column(DateTime)
-    OutTime = Column(DateTime)
-    Latitude = Column(Float)
-    Longitude = Column(Float)
-    Remarks = Column(Text)
+    @property
+    def BillStatus(self):
+        return "PAID" if self.PaymentID is not None else "GENERATED"
 
-    user = relationship("User")
+    @property
+    def BillGeneratedAt(self):
+        return self.Date
+
+    @property
+    def Type(self):
+        if self.appointment:
+            return self.appointment.Type
+        return None
+
+    @property
+    def PatientID(self):
+        if self.appointment:
+            return self.appointment.PatientID
+        return None
+
+    @property
+    def DoctorID(self):
+        if self.appointment:
+            return self.appointment.DoctorID
+        return None
+
+class LabCenterBilling(Base):
+    __tablename__ = "LabCenterBilling"
+
+    LabBillID = Column(Integer, primary_key=True, index=True)
+    AppointmentID = Column(Integer, ForeignKey("Appointments.AppointmentID"))
+    PaymentID = Column(Integer, ForeignKey("Payments.PaymentID"))
+    Amount = Column(DECIMAL, nullable=False)
+    Date = Column(DateTime, default=datetime.utcnow)
+
+    appointment = relationship("Appointment")
+    payment = relationship("Payment")
+
+    @property
+    def BillID(self):
+        return self.LabBillID
+
+    @property
+    def BillAmount(self):
+        return self.Amount
+
+    @property
+    def BillStatus(self):
+        return "PAID" if self.PaymentID is not None else "GENERATED"
+
+    @property
+    def BillGeneratedAt(self):
+        return self.Date
+
+    @property
+    def AppointmentIDValue(self):
+        return self.AppointmentID
+
+    @property
+    def LabID(self):
+        if self.appointment:
+            return self.appointment.LabID
+        return None
+
+    @property
+    def InvestigationID(self):
+        if self.appointment:
+            booking = next(iter(getattr(self.appointment, "lab_bookings", []) or []), None)
+            if booking:
+                return booking.InvestigationID
+        return None
