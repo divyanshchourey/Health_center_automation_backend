@@ -8,7 +8,7 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
-set VIRTUAL_ENV=D:\data\Health_center_automation_backend-main\Health_center_automation_backend-main\venv
+set VIRTUAL_ENV=C:\Users\hp\Downloads\Health_center_automation_backend-mainv3\Health_center_automation_backend-main\Health_center_automation_backend-main\venv
 
 if not defined PROMPT set PROMPT=$P$G
 
