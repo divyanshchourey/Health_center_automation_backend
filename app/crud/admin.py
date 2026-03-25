@@ -10,12 +10,30 @@ from datetime import date, datetime
 
 
 def create_lab(db: Session, payload: schemas.LabCenterCreate):
+    from app.crud import users as crud_users
+    
+    owner_user_id = None
+    if payload.OwnerEmail and payload.OwnerPassword:
+        # Create user first
+        user_create = schemas.UserCreate(
+            FirstName=payload.OwnerFirstName or payload.Name,
+            LastName=payload.OwnerLastName or "Owner",
+            Email=payload.OwnerEmail,
+            Phone=payload.OwnerPhone or payload.Contact,
+            Password=payload.OwnerPassword,
+            AadharNumber=payload.OwnerAadharNumber or f"LAB-{payload.Name[:5]}-{datetime.now().strftime('%M%S')}",
+            RoleID=5, # 5 = Lab role
+        )
+        new_user = crud_users.create_user(db, user_create)
+        owner_user_id = new_user.UserID
+
     lab = models.LabCenter(
         Name=payload.Name,
         Address=payload.Address,
         Contact=payload.Contact,
         AccreditationNumber=payload.AccreditationNumber,
         ApprovedByAdmin=bool(payload.ApprovedByAdmin),
+        OwnerUserID=owner_user_id,
     )
     db.add(lab)
     db.commit()
@@ -37,6 +55,36 @@ def list_labs(db: Session):
         .filter(models.LabCenter.ApprovedByAdmin == True)  # noqa: E712
         .all()
     )
+
+
+def get_lab_by_id(db: Session, lab_id: int):
+    return db.query(models.LabCenter).filter(models.LabCenter.LabID == lab_id).first()
+
+
+def update_lab(db: Session, lab_id: int, payload: schemas.LabCenterCreate):
+    lab = get_lab_by_id(db, lab_id)
+    if not lab:
+        return None
+
+    lab.Name = payload.Name
+    lab.Address = payload.Address
+    lab.Contact = payload.Contact
+    lab.AccreditationNumber = payload.AccreditationNumber
+    lab.ApprovedByAdmin = bool(payload.ApprovedByAdmin)
+
+    db.commit()
+    db.refresh(lab)
+    return lab
+
+
+def delete_lab(db: Session, lab_id: int):
+    lab = get_lab_by_id(db, lab_id)
+    if not lab:
+        return False
+
+    db.delete(lab)
+    db.commit()
+    return True
 
 
 def list_admin_appointments(db: Session, query_date: date | None = None):

@@ -358,7 +358,24 @@ def get_patient_bill(db: Session, patient_id: int, booking_id: int):
         .first()
     )
     if not bill:
-        raise ValueError("Booking not found.")
+        # Fallback to default rate from investigation if no formal bill exists
+        investigation = (
+            db.query(models.Investigation)
+            .filter(models.Investigation.InvestigationID == booking.InvestigationID)
+            .first()
+        )
+        amount = 0.0
+        if investigation and investigation.DefaultRate is not None:
+            amount = float(investigation.DefaultRate)
+        
+        return {
+            "LabBillID": 0,
+            "AppointmentID": booking.AppointmentID,
+            "PaymentID": 0,
+            "Amount": amount,
+            "BillStatus": "ESTIMATED",
+            "Date": datetime.utcnow(),
+        }
     return bill
 
 

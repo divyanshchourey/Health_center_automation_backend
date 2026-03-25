@@ -162,3 +162,54 @@ def get_consultation_by_appointment(
     if not consultation:
         raise HTTPException(status_code=404, detail="Consultation not found")
     return consultation
+
+
+@router.get("/appointments/{appointment_id}/prescription/download")
+def get_prescription_download_link(
+    appointment_id: int,
+    expires_in_seconds: int = Query(default=600, ge=60, le=86400),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not _is_doctor_user(current_user):
+        raise HTTPException(status_code=403, detail="Only doctor can access prescription")
+
+    try:
+        download_info = crud_doctor.get_doctor_prescription_download_url(
+            db=db,
+            doctor_id=current_user.UserID,
+            appointment_id=appointment_id,
+            expires_in_seconds=expires_in_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return download_info
+
+
+@router.get("/reports/{document_id}/download")
+def get_report_download_link(
+    document_id: int,
+    expires_in_seconds: int = Query(default=600, ge=60, le=86400),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not _is_doctor_user(current_user):
+        raise HTTPException(status_code=403, detail="Only doctor can access reports")
+
+    try:
+        download_info = crud_doctor.get_doctor_report_download_url(
+            db=db,
+            doctor_id=current_user.UserID,
+            document_id=document_id,
+            expires_in_seconds=expires_in_seconds,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return download_info
+

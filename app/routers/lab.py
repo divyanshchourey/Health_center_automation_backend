@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session  # pyright: ignore[reportMissingImports]
 
 from app import schemas
-from app.core.dependencies import require_role
+from app.core.dependencies import require_role, verify_lab_access
 from app.crud import lab as crud_lab
 from app.database import get_db
 
@@ -23,9 +23,8 @@ def add_investigation(
 
 @router.get("/investigations", response_model=list[schemas.InvestigationResponse])
 def view_all_tests(
-    lab_id: int = Query(...),
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     try:
         return crud_lab.list_own_lab_tests(db=db, lab_id=lab_id)
@@ -34,18 +33,19 @@ def view_all_tests(
 
 @router.get("/{lab_id}/bookings", response_model=list[schemas.InvestigationBookingResponse])
 def list_lab_bookings(
-    lab_id: int,
     status: str | None = Query(default=None),
     date: str | None = Query(default=None),
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
+    from datetime import datetime
     try:
+        query_date_parsed = datetime.strptime(date, "%Y-%m-%d").date() if date else None
         return crud_lab.list_lab_bookings(
             db=db,
             lab_id=lab_id,
             status=status,
-            date=date,
+            query_date=query_date_parsed,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -53,11 +53,10 @@ def list_lab_bookings(
 
 @router.patch("/{lab_id}/bookings/{booking_id}/approve", response_model=schemas.InvestigationBookingResponse)
 def approve_or_reject_booking(
-    lab_id: int,
     booking_id: int,
-    payload: schemas.InvestigationBookingCreate,
+    payload: schemas.BookingActionPayload,
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     try:
         return crud_lab.approve_booking(
@@ -72,11 +71,10 @@ def approve_or_reject_booking(
 
 @router.post("/{lab_id}/bookings/{booking_id}/bill", response_model=schemas.LabCenterBillingResponse)
 def generate_lab_bill(
-    lab_id: int,
     booking_id: int,
     payload: schemas.LabCenterBillingCreate,
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     try:
         return crud_lab.generate_bill(
@@ -91,10 +89,9 @@ def generate_lab_bill(
 
 @router.get("/{lab_id}/bookings/{booking_id}/bill", response_model=schemas.LabCenterBillingResponse)
 def get_lab_bill_by_booking(
-    lab_id: int,
     booking_id: int,
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     try:
         return crud_lab.get_lab_bill_by_booking(
@@ -108,11 +105,10 @@ def get_lab_bill_by_booking(
 
 @router.post("/{lab_id}/bookings/{booking_id}/bill/pay", response_model=schemas.PaymentResponse)
 def pay_lab_bill_by_lab(
-    lab_id: int,
     booking_id: int,
     payload: schemas.PaymentCreate,
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     try:
         return crud_lab.record_lab_bill_payment(
@@ -127,11 +123,10 @@ def pay_lab_bill_by_lab(
 
 @router.post("/{lab_id}/bookings/{booking_id}/reports")
 async def upload_lab_booking_report(
-    lab_id: int,
     booking_id: int,
     file: UploadFile = File(...),
+    lab_id: int = Depends(verify_lab_access),
     db: Session = Depends(get_db),
-    _lab_user=Depends(require_role("lab", "admin", role_ids={1, 5})),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files allowed")

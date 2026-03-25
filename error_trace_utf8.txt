@@ -1,0 +1,8 @@
+﻿Attempting to create lab: Test Lab 15e73426 with owner email: labowner_15e73426@test.com
+Error during verification: (psycopg2.errors.UndefinedColumn) column "OwnerUserID" of relation "LabCenters" does not exist
+LINE 1: ...editationNumber", "ApprovedByAdmin", "CreatedAt", "OwnerUser...
+                                                             ^
+
+[SQL: INSERT INTO "LabCenters" ("Name", "Address", "Contact", "AccreditationNumber", "ApprovedByAdmin", "CreatedAt", "OwnerUserID") VALUES (%(Name)s, %(Address)s, %(Contact)s, %(AccreditationNumber)s, %(ApprovedByAdmin)s, %(CreatedAt)s, %(OwnerUserID)s) RETURNING "LabCenters"."LabID"]
+[parameters: {'Name': 'Test Lab 15e73426', 'Address': '123 Test St', 'Contact': '9998887776', 'AccreditationNumber': 'TEST-AC-123', 'ApprovedByAdmin': True, 'CreatedAt': datetime.datetime(2026, 3, 24, 2, 34, 21, 60834), 'OwnerUserID': 120}]
+(Background on this error at: https://sqlalche.me/e/20/f405)

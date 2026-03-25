@@ -113,10 +113,17 @@ def pay_my_lab_bill(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    raise HTTPException(
-        status_code=403,
-        detail="Lab bill payments are recorded by lab staff. Patients can only view bill records.",
-    )
+    if current_user.RoleID != 3:
+        raise HTTPException(status_code=403, detail="Only patient can register payment")
+    try:
+        return crud_patient.pay_lab_bill(
+            db=db,
+            patient_id=current_user.UserID,
+            booking_id=booking_id,
+            payload=payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/appointments/{appointment_id}/doctor-bill", response_model=schemas.DoctorBillingResponse)
@@ -145,10 +152,17 @@ def pay_my_doctor_bill(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    raise HTTPException(
-        status_code=403,
-        detail="Doctor bill payments are recorded by hospital staff. Patients can only view bill records.",
-    )
+    if current_user.RoleID != 3:
+        raise HTTPException(status_code=403, detail="Only patient can register payment")
+    try:
+        return crud_patient.pay_doctor_bill(
+            db=db,
+            patient_id=current_user.UserID,
+            appointment_id=appointment_id,
+            payload=payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/appointments/{appointment_id}/consultation", response_model=schemas.ConsultationResponse)
@@ -170,6 +184,22 @@ def get_my_consultation(
     if not consultation:
         raise HTTPException(status_code=404, detail="Consultation not found")
     return consultation
+
+
+@router.get("/prescriptions", response_model=list[schemas.PrescriptionListResponse])
+def get_all_my_prescriptions(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.RoleID != 3:
+        raise HTTPException(status_code=403, detail="Only patient can access prescriptions")
+    try:
+        return crud_patient.get_all_patient_prescriptions(
+            db=db,
+            patient_id=current_user.UserID,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/{user_id}", response_model=schemas.PatientProfileResponse)
@@ -240,6 +270,20 @@ def list_my_records(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/appointments/categorized", response_model=schemas.CategorizedAppointmentsResponse)
+def list_my_categorized_appointments(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if current_user.RoleID != 3:
+        raise HTTPException(status_code=403, detail="Only patient can access appointments")
+
+    return crud_patient.get_categorized_appointments(
+        db=db,
+        patient_id=current_user.UserID,
+    )
+
+
 @router.get("/bookings/{booking_id}/reports", response_model=list[schemas.ReportResponse])
 def list_my_reports_for_booking(
     booking_id: int,
@@ -290,3 +334,6 @@ def get_my_document_download_link(
         "DownloadURL": download_url,
         "ExpiresInSeconds": expires_in_seconds,
     }
+
+
+

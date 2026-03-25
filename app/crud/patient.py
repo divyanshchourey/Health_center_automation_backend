@@ -130,6 +130,18 @@ def create_appointment_for_patient(
     if not doctor:
         raise ValueError("Doctor does not exist")
 
+    # Check for existing appointment for the same doctor at the same time
+    existing_appointment = (
+        db.query(models.Appointment)
+        .filter(
+            models.Appointment.DoctorID == data.DoctorID,
+            models.Appointment.DateTime == data.DateTime
+        )
+        .first()
+    )
+    if existing_appointment:
+        raise ValueError("This doctor is already booked for the selected date and time.")
+
     appointment = models.Appointment(
         PatientID=patient_id,
         DoctorID=data.DoctorID,
@@ -157,6 +169,39 @@ def get_patient_appointments(
         query = query.filter(cast(models.Appointment.DateTime, Date) == query_date)
 
     return query.order_by(models.Appointment.DateTime.desc()).all()
+
+
+def get_categorized_appointments(
+    db: Session,
+    patient_id: int,
+):
+    """Fetch all appointments for a patient and categorize them as today, past, and upcoming."""
+    all_appointments = (
+        db.query(models.Appointment)
+        .filter(models.Appointment.PatientID == patient_id)
+        .order_by(models.Appointment.DateTime.desc())
+        .all()
+    )
+
+    now = datetime.utcnow()
+    today_date = now.date()
+
+    categorized = {
+        "today": [],
+        "past": [],
+        "upcoming": []
+    }
+
+    for appt in all_appointments:
+        appt_date = appt.DateTime.date()
+        if appt_date < today_date:
+            categorized["past"].append(appt)
+        elif appt_date > today_date:
+            categorized["upcoming"].append(appt)
+        else:
+            categorized["today"].append(appt)
+
+    return categorized
 
 
 def upload_patient_pdf(
@@ -345,7 +390,28 @@ def create_document_download_url(
     raise RuntimeError("Failed to create download URL: invalid response from storage.")
 
 
+def _calculate_doctor_fee(specialization: str | None) -> float:
+    """Calculate doctor fee based on specialization."""
+    if not specialization:
+        return 500.0
+    
+    mapping = {
+        "General Physician": 800.0,
+        "Gynecologist": 1500.0,
+        "Cardiologist": 3000.0,
+        "Dermatologist": 2000.0,
+        "Orthopedic": 1500.0,
+        "Pediatrician": 1200.0,
+        "Psychiatrist": 2500.0,
+    }
+    
+    # Simple case-insensitive match or exact match depending on how specializations are stored
+    # Assuming normalization or careful input for now.
+    return mapping.get(specialization.strip(), 500.0)
+
+
 def get_patient_doctor_bill(db: Session, patient_id: int, appointment_id: int):
+
     bill = (
         db.query(models.DoctorBilling)
         .join(models.Appointment, models.DoctorBilling.AppointmentID == models.Appointment.AppointmentID)
@@ -357,7 +423,42 @@ def get_patient_doctor_bill(db: Session, patient_id: int, appointment_id: int):
     )
 
     if not bill:
-        return None
+        # Fallback to calculated fee if no bill entry exists
+        appointment = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.AppointmentID == appointment_id,
+                models.Appointment.PatientID == patient_id,
+            )
+            .first()
+        )
+        if not appointment:
+            return None
+        
+        doctor_profile = (
+            db.query(models.DoctorProfile)
+            .filter(models.DoctorProfile.DoctorID == appointment.DoctorID)
+            .first()
+        )
+        if not doctor_profile:
+            return None
+        
+        doctor_user = db.query(models.User).filter(models.User.UserID == appointment.DoctorID).first()
+        doctor_name = f"{doctor_user.FirstName} {doctor_user.LastName or ''}".strip() if doctor_user else "Unknown"
+
+        amount = _calculate_doctor_fee(doctor_profile.Specialization)
+
+        return {
+            "BillID": 0,  # Indicates a calculated/provisional bill
+            "AppointmentID": appointment.AppointmentID,
+            "PatientID": appointment.PatientID,
+            "DoctorID": appointment.DoctorID,
+            "DoctorName": doctor_name,
+            "Type": appointment.Type,
+            "BillAmount": amount,
+            "BillStatus": "ESTIMATED",
+            "BillGeneratedAt": datetime.utcnow(),
+        }
 
     doctor = (
         db.query(models.User)
@@ -406,6 +507,52 @@ def get_patient_consultation_by_appointment(
     )
 
 
+def get_all_patient_prescriptions(db: Session, patient_id: int):
+    consultations = (
+        db.query(
+            models.Consultation.ConsultationID,
+            models.Appointment.AppointmentID,
+            models.Appointment.DateTime,
+            models.Consultation.PrescriptionFile,
+            models.Appointment.DoctorID,
+        )
+        .join(models.Appointment, models.Consultation.AppointmentID == models.Appointment.AppointmentID)
+        .filter(
+            models.Appointment.PatientID == patient_id,
+            models.Consultation.PrescriptionFile.isnot(None),
+        )
+        .order_by(models.Appointment.DateTime.desc())
+        .all()
+    )
+
+    results = []
+    for cons_data in consultations:
+        doctor_user = db.query(models.User).filter(models.User.UserID == cons_data.DoctorID).first()
+        doctor_name = f"{doctor_user.FirstName} {doctor_user.LastName or ''}".strip() if doctor_user else "Unknown"
+
+        download_url = None
+        if cons_data.PrescriptionFile:
+            try:
+                download_url = create_document_download_url(
+                    storage_path=cons_data.PrescriptionFile,
+                    expires_in_seconds=3600,
+                )
+            except Exception:
+                pass
+
+        results.append({
+            "ConsultationID": cons_data.ConsultationID,
+            "AppointmentID": cons_data.AppointmentID,
+            "DateTime": cons_data.DateTime,
+            "DoctorName": doctor_name,
+            "PrescriptionFile": cons_data.PrescriptionFile,
+            "DownloadURL": download_url,
+        })
+
+    return results
+
+
+
 def pay_lab_bill(
     db: Session,
     patient_id: int,
@@ -430,7 +577,24 @@ def pay_lab_bill(
         .first()
     )
     if not bill:
-        raise ValueError("Lab bill not found.")
+        # Auto-generate bill using DefaultRate if no formal bill exists
+        investigation = (
+            db.query(models.Investigation)
+            .filter(models.Investigation.InvestigationID == booking.InvestigationID)
+            .first()
+        )
+        amount = 0.0
+        if investigation and investigation.DefaultRate is not None:
+            amount = float(investigation.DefaultRate)
+        
+        bill = models.LabCenterBilling(
+            AppointmentID=booking.AppointmentID,
+            Amount=Decimal(str(amount)),
+            Date=datetime.utcnow(),
+        )
+        db.add(bill)
+        db.flush()
+
     if bill.PaymentID is not None:
         raise ValueError("Lab bill is already paid.")
 
@@ -451,13 +615,11 @@ def pay_lab_bill(
     db.refresh(bill)
 
     return {
-        "BillType": "lab_bill",
-        "BillID": bill.LabBillID,
+        "LabBillID": bill.LabBillID,
+        "AppointmentID": bill.AppointmentID,
         "PaymentID": payment.PaymentID,
         "Amount": float(Decimal(str(bill.Amount))),
-        "BillStatus": bill.BillStatus,
-        "PaymentStatus": payment.Status or "SUCCESS",
-        "PaidAt": payment.Date,
+        "Date": payment.Date,
     }
 
 
@@ -467,17 +629,37 @@ def pay_doctor_bill(
     appointment_id: int,
     payload: schemas.DoctorBillingCreate,
 ):
-    bill = (
-        db.query(models.DoctorBilling)
-        .join(models.Appointment, models.DoctorBilling.AppointmentID == models.Appointment.AppointmentID)
-        .filter(
-            models.DoctorBilling.AppointmentID == appointment_id,
-            models.Appointment.PatientID == patient_id,
-        )
-        .first()
-    )
     if not bill:
-        raise ValueError("Doctor bill not found.")
+        # Auto-generate bill using specialization calculation if no formal bill exists
+        appointment = (
+            db.query(models.Appointment)
+            .filter(
+                models.Appointment.AppointmentID == appointment_id,
+                models.Appointment.PatientID == patient_id,
+            )
+            .first()
+        )
+        if not appointment:
+            raise ValueError("Appointment not found.")
+        
+        doctor_profile = (
+            db.query(models.DoctorProfile)
+            .filter(models.DoctorProfile.DoctorID == appointment.DoctorID)
+            .first()
+        )
+        if not doctor_profile:
+            raise ValueError("Doctor profile not found.")
+        
+        amount = _calculate_doctor_fee(doctor_profile.Specialization)
+        
+        bill = models.DoctorBilling(
+            AppointmentID=appointment_id,
+            Amount=Decimal(str(amount)),
+            Date=datetime.utcnow(),
+        )
+        db.add(bill)
+        db.flush()
+
     if bill.PaymentID is not None:
         raise ValueError("Doctor bill is already paid.")
 
@@ -497,11 +679,9 @@ def pay_doctor_bill(
     db.refresh(bill)
 
     return {
-        "BillType": "doctor_bill",
-        "BillID": bill.DBillID,
+        "DBillID": bill.DBillID,
+        "AppointmentID": bill.AppointmentID,
         "PaymentID": payment.PaymentID,
         "Amount": float(Decimal(str(bill.Amount))),
-        "BillStatus": bill.BillStatus,
-        "PaymentStatus": payment.Status or "SUCCESS",
-        "PaidAt": payment.Date,
+        "Date": payment.Date,
     }

@@ -73,7 +73,7 @@ class PatientProfileCreate(PatientProfileBase):
 class PatientProfileResponse(PatientProfileBase):
     PatientID: int
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class DoctorProfileBase(BaseModel):
@@ -198,6 +198,11 @@ class AppointmentEmployeeResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class CategorizedAppointmentsResponse(BaseModel):
+    today: List[AppointmentResponse]
+    past: List[AppointmentResponse]
+    upcoming: List[AppointmentResponse]
+
 class ConsultationBase(BaseModel):
     AppointmentID: int
     PrescriptionFile: Optional[str]
@@ -210,6 +215,18 @@ class ConsultationResponse(ConsultationBase):
     ConsultationID: int
     class Config:
         from_attributes = True
+
+class PrescriptionListResponse(BaseModel):
+    ConsultationID: int
+    AppointmentID: int
+    DateTime: datetime
+    DoctorName: Optional[str]
+    PrescriptionFile: Optional[str]
+    DownloadURL: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 
 
 # =========================
@@ -224,11 +241,17 @@ class LabCenterBase(BaseModel):
     ApprovedByAdmin: Optional[bool] = False
 
 class LabCenterCreate(LabCenterBase):
-    pass
+    OwnerEmail: Optional[str] = None
+    OwnerPassword: Optional[str] = None
+    OwnerFirstName: Optional[str] = None
+    OwnerLastName: Optional[str] = None
+    OwnerPhone: Optional[str] = None
+    OwnerAadharNumber: Optional[str] = None
 
 class LabCenterResponse(LabCenterBase):
     LabID: int
     CreatedAt: datetime
+    OwnerUserID: Optional[int] = None
     class Config:
         from_attributes = True
 
@@ -251,7 +274,7 @@ class InvestigationResponse(InvestigationBase):
 class InvestigationBookingBase(BaseModel):
     AppointmentID: Optional[int] = None
     InvestigationID: int
-    InvestigationDate: Optional[date] 
+    InvestigationDate: Optional[date] = None
     LabID: int
     Status: Optional[str] = "PENDING"
     ResultDate: Optional[date] = None
@@ -261,8 +284,14 @@ class InvestigationBookingCreate(InvestigationBookingBase):
 
 class InvestigationBookingResponse(InvestigationBookingBase):
     BookingID: int
+    PatientName: Optional[str] = None
+    InvestigationName: Optional[str] = None
     class Config:
         from_attributes = True
+
+
+class BookingActionPayload(BaseModel):
+    action: Literal["approve", "reject"]
 
 
 class ReportBase(BaseModel):
@@ -317,7 +346,7 @@ class DoctorBillingResponse(DoctorBillingBase):
 
 class LabCenterBillingBase(BaseModel):
     AppointmentID: int
-    PaymentID: int
+    PaymentID: Optional[int] = None
     Amount: float
 
 class LabCenterBillingCreate(LabCenterBillingBase):

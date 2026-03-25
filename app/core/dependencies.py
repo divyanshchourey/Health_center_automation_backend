@@ -22,14 +22,19 @@ def require_role(*role_names: str, role_ids: set[int] | None = None):
     return _dep
 
 
-def get_current_lab_id(
+def verify_lab_access(
+    lab_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(require_role("lab", role_ids={5})),
+    current_user: models.User = Depends(require_role("lab", "admin", role_ids={1, 5})),
 ) -> int:
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail=(
-            "The PDF 3NF schema does not define a lab-user ownership mapping. "
-            "Lab-authenticated endpoints need a new lab resolution strategy."
-        ),
-    )
+    # Admins have access to all labs
+    if current_user.RoleID == 1:
+        return lab_id
+        
+    lab = db.query(models.LabCenter).filter(models.LabCenter.OwnerUserID == current_user.UserID).first()
+    if not lab or lab.LabID != lab_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to access this Lab Center.",
+        )
+    return lab_id

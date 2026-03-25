@@ -1,11 +1,10 @@
-from argparse import FileType
 from sqlalchemy import (  # pyright: ignore[reportMissingImports]
     Column, Integer, String, Text, Date, DateTime, Boolean, Float, DECIMAL,
     ForeignKey, JSON
 )
 from sqlalchemy.orm import relationship  # pyright: ignore[reportMissingImports]
 from datetime import datetime
-from .database import Base
+from app.database import Base
 
 # =========================
 # 1️⃣  Roles & Users
@@ -244,6 +243,7 @@ class Appointment(Base):
 
     patient = relationship("PatientProfile",back_populates="appointments")
     doctor = relationship("DoctorProfile", back_populates="appointments")
+    lab = relationship("LabCenter", back_populates="appointments")
    
 
 class Consultation(Base):
@@ -270,6 +270,11 @@ class LabCenter(Base):
     AccreditationNumber = Column(String)
     ApprovedByAdmin = Column(Boolean, default=False)
     CreatedAt = Column(DateTime, default=datetime.utcnow)
+    OwnerUserID = Column(Integer, ForeignKey("Users.UserID"), unique=True, nullable=True)
+
+    owner = relationship("User")
+    appointments = relationship("Appointment", back_populates="lab")
+    investigation_bookings = relationship("InvestigationBooking", back_populates="lab", cascade="all, delete-orphan")
 
 
 class Investigation(Base):
@@ -295,13 +300,22 @@ class InvestigationBooking(Base):
 
     appointment = relationship("Appointment")
     investigation = relationship("Investigation")
-    lab = relationship("LabCenter")
+    lab = relationship("LabCenter", back_populates="investigation_bookings")
+    reports = relationship("Report", back_populates="booking", cascade="all, delete-orphan")
    
 
     @property
     def InvestigationName(self):
         if self.investigation:
             return self.investigation.Name
+        return None
+
+    @property
+    def PatientName(self):
+        if self.appointment and self.appointment.patient and self.appointment.patient.user:
+            user = self.appointment.patient.user
+            last_name = f" {user.LastName}" if user.LastName else ""
+            return f"{user.FirstName}{last_name}"
         return None
 
 class Report(Base):
@@ -311,7 +325,7 @@ class Report(Base):
     BookingID = Column(Integer, ForeignKey("InvestigationBookings.BookingID"))
     FilePath = Column(Text)
     FileType = Column(String)
-    booking = relationship("InvestigationBooking")
+    booking = relationship("InvestigationBooking", back_populates="reports")
 
     @property
     def DocumentID(self):

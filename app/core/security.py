@@ -5,9 +5,12 @@ from fastapi import Depends, HTTPException, status  # pyright: ignore[reportMiss
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # pyright: ignore[reportMissingImports]
 from jose import JWTError, jwt  # pyright: ignore[reportMissingModuleSource]
 from sqlalchemy.orm import Session  # pyright: ignore[reportMissingImports]
+from dotenv import load_dotenv
 
 from app import models
 from app.database import get_db
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
