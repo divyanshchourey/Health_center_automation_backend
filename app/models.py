@@ -63,6 +63,10 @@ class PatientProfile(Base):
     user = relationship("User", back_populates="patient")
     appointments = relationship("Appointment", back_populates="patient")
 
+    @property
+    def AadharNumber(self):
+        return self.user.AadharNumber if self.user else None
+
 
 class DoctorProfile(Base):
     __tablename__ = "DoctorProfiles"
@@ -81,6 +85,10 @@ class DoctorProfile(Base):
 
     user = relationship("User", back_populates="doctor")
     appointments = relationship("Appointment", back_populates="doctor")
+
+    @property
+    def AadharNumber(self):
+        return self.user.AadharNumber if self.user else None
 
     @property
     def ImageID(self):
@@ -161,6 +169,10 @@ class Employee(Base):
     IFSCCode = Column(String)
 
     user = relationship("User", back_populates="employee")
+
+    @property
+    def AadharNumber(self):
+        return self.user.AadharNumber if self.user else None
 
     @property
     def ImageID(self):
@@ -244,6 +256,7 @@ class Appointment(Base):
     patient = relationship("PatientProfile",back_populates="appointments")
     doctor = relationship("DoctorProfile", back_populates="appointments")
     lab = relationship("LabCenter", back_populates="appointments")
+    doctor_billing = relationship("DoctorBilling", back_populates="appointment", uselist=False)
    
 
 class Consultation(Base):
@@ -359,7 +372,7 @@ class DoctorBilling(Base):
     Amount = Column(DECIMAL, nullable=False)
     Date = Column(DateTime, default=datetime.utcnow)
 
-    appointment = relationship("Appointment")
+    appointment = relationship("Appointment", back_populates="doctor_billing")
     payment = relationship("Payment")
 
     @property

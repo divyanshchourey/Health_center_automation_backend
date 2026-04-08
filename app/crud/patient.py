@@ -32,6 +32,7 @@ def get_all_patients(db: Session):
             models.User.FirstName,
             models.User.LastName,
             models.User.Phone,
+            models.User.AadharNumber,
             models.PatientProfile.BloodGroup,
             models.PatientProfile.RiskCategory,
         )
@@ -48,6 +49,7 @@ def get_all_doctors(db: Session):
             models.User.FirstName,
             models.User.LastName,
             models.User.Phone,
+            models.User.AadharNumber,
             models.DoctorProfile.Specialization,
             models.DoctorProfile.ExperienceYears,
         )
@@ -168,7 +170,12 @@ def get_patient_appointments(
     if query_date is not None:
         query = query.filter(cast(models.Appointment.DateTime, Date) == query_date)
 
-    return query.order_by(models.Appointment.DateTime.desc()).all()
+    results = query.order_by(models.Appointment.DateTime.desc()).all()
+    for appt in results:
+        if appt.doctor_billing:
+            appt.Status = "Paid"
+            appt.Method = "Cash"
+    return results
 
 
 def get_categorized_appointments(
@@ -193,6 +200,10 @@ def get_categorized_appointments(
     }
 
     for appt in all_appointments:
+        if appt.doctor_billing:
+            appt.Status = "Paid"
+            appt.Method = "Cash"
+            
         appt_date = appt.DateTime.date()
         if appt_date < today_date:
             categorized["past"].append(appt)
@@ -403,11 +414,17 @@ def _calculate_doctor_fee(specialization: str | None) -> float:
         "Orthopedic": 1500.0,
         "Pediatrician": 1200.0,
         "Psychiatrist": 2500.0,
+        "Others": 500.0,
     }
     
-    # Simple case-insensitive match or exact match depending on how specializations are stored
-    # Assuming normalization or careful input for now.
-    return mapping.get(specialization.strip(), 500.0)
+    # Try exact match first, then normalized match
+    if specialization in mapping:
+        return mapping[specialization]
+        
+    normalized = (specialization or "").strip().lower().replace(" ", "_")
+    normalized_mapping = {k.lower().replace(" ", "_"): v for k, v in mapping.items()}
+    
+    return normalized_mapping.get(normalized, 500.0)
 
 
 def get_patient_doctor_bill(db: Session, patient_id: int, appointment_id: int):
@@ -629,6 +646,12 @@ def pay_doctor_bill(
     appointment_id: int,
     payload: schemas.DoctorBillingCreate,
 ):
+    bill = (
+        db.query(models.DoctorBilling)
+        .filter(models.DoctorBilling.AppointmentID == appointment_id)
+        .first()
+    )
+
     if not bill:
         # Auto-generate bill using specialization calculation if no formal bill exists
         appointment = (

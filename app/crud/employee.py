@@ -6,19 +6,37 @@ from app import models, schemas
 from app.crud import profile_image as crud_profile_image
 
 DOCTOR_CHECKUP_PRICING: dict[str, Decimal] = {
-    "general_checkup": Decimal("500.00"),
+    # Original core categories
     "consultation": Decimal("800.00"),
-    "follow_up": Decimal("400.00"),
     "emergency": Decimal("1200.00"),
+    "follow_up": Decimal("400.00"),
+    "general_checkup": Decimal("500.00"),
+    
+    # New specialization-based categories
+    "cardiologist": Decimal("3000.00"),
+    "dermatologist": Decimal("2000.00"),
+    "general_physician": Decimal("800.00"),
+    "gynecologist": Decimal("1500.00"),
+    "orthopedic": Decimal("1500.00"),
+    "pediatrician": Decimal("1200.00"),
+    "psychiatrist": Decimal("2500.00"),
+    "others": Decimal("500.00"),
 }
 
 
 def _normalize_checkup_category(category: str) -> str:
-    normalized = (category or "").strip().lower().replace(" ", "_")
-    if normalized not in DOCTOR_CHECKUP_PRICING:
-        allowed = ", ".join(sorted(DOCTOR_CHECKUP_PRICING.keys()))
-        raise ValueError(f"Invalid checkup category. Use one of: {allowed}.")
-    return normalized
+    """Normalize checkup category and validate against pricing list."""
+    if not category:
+        return "others"
+        
+    normalized = category.strip().lower().replace(" ", "_")
+    if normalized in DOCTOR_CHECKUP_PRICING:
+        return normalized
+    
+    # Fallback/validation: if it's not a known specialization, it might be an invalid core type
+    # or we can default to 'others' if preferred. For strict validation:
+    allowed = ", ".join(sorted(DOCTOR_CHECKUP_PRICING.keys()))
+    raise ValueError(f"Invalid checkup category. Use one of: {allowed}.")
 
 
 def get_doctor_checkup_price_list():
@@ -35,6 +53,7 @@ def get_all_employees(db: Session):
         models.User.FirstName,
         models.User.LastName,
         models.User.Phone,
+        models.User.AadharNumber,
         models.Employee.EProfilePhoto,
         models.Employee.Division,
         models.Employee.Ward,
@@ -214,7 +233,15 @@ def generate_doctor_bill(
     normalized_category = _normalize_checkup_category(appointment_type)
     amount = DOCTOR_CHECKUP_PRICING[normalized_category]
 
-    appointment.Type = normalized_category
+    # Preserve the original Type if it was already set (e.g. capitalized specialization)
+    # but normalize for the billing record if it was one of the core checkup types.
+    core_types = {"consultation", "emergency", "follow_up", "general_checkup"}
+    if normalized_category in core_types:
+        appointment.Type = normalized_category
+    # If it's a specialization, we keep whatever the user sent (e.g. "Orthopedic")
+    # or ensure it's at least the normalized one if it was missing.
+    elif not appointment.Type:
+        appointment.Type = normalized_category
 
     bill = models.DoctorBilling(
         AppointmentID=appointment_id,

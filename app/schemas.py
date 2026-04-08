@@ -72,6 +72,7 @@ class PatientProfileCreate(PatientProfileBase):
 
 class PatientProfileResponse(PatientProfileBase):
     PatientID: int
+    AadharNumber: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -93,6 +94,7 @@ class DoctorProfileCreate(DoctorProfileBase):
 
 class DoctorProfileResponse(DoctorProfileBase):
     DoctorID: int
+    AadharNumber: Optional[str] = None
     class Config:
         from_attributes = True
 
@@ -105,6 +107,7 @@ class DoctorListResponse(BaseModel):
     Phone: str
     Specialization: Optional[str]
     ExperienceYears: Optional[int]
+    AadharNumber: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -131,6 +134,7 @@ class EmployeeCreate(EmployeeBase):
 
 class EmployeeResponse(EmployeeBase):
     EmployeeID: int
+    AadharNumber: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -145,6 +149,7 @@ class EmployeeListResponse(BaseModel):
     Division: Optional[str]
     Designation: Optional[str]
     Status: Optional[str]
+    AadharNumber: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -157,6 +162,7 @@ class PatientListResponse(BaseModel):
     Phone: str
     BloodGroup: Optional[str]
     RiskCategory: Optional[str]
+    AadharNumber: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -180,6 +186,7 @@ class AppointmentCreate(AppointmentBase):
 
 class AppointmentResponse(AppointmentBase):
     AppointmentID: int
+    Method: Optional[str] = "Cash"
 
     class Config:
         from_attributes = True
@@ -194,6 +201,7 @@ class AppointmentEmployeeResponse(BaseModel):
     DateTime: datetime
     Type: Optional[str]
     Status: Optional[str]
+    Method: Optional[str] = "Cash"
 
     class Config:
         from_attributes = True

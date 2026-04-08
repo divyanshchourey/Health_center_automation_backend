@@ -58,6 +58,7 @@ def login_user(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
             "LastName": user.LastName,
             "Email": user.Email,
             "Phone": user.Phone,
+            "AadharNumber": user.AadharNumber,
             "RoleID": user.RoleID
         }
     }
@@ -101,6 +102,7 @@ def login_patient(credentials: schemas.UserLogin, db: Session = Depends(get_db))
             "LastName": user.LastName,
             "Email": user.Email,
             "Phone": user.Phone,
+            "AadharNumber": user.AadharNumber,
             "RoleID": user.RoleID
         }
     }
