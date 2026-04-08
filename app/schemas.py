@@ -367,7 +367,10 @@ class LabCenterBillingResponse(LabCenterBillingBase):
         from_attributes = True
 
 
-
+class ChatInput(BaseModel):
+    user_id: str
+    message: str
+    system_prompt: Optional[str] = "You are a professional clinical assistant in a health center automation system. Be concise and accurate."
 
 
 
